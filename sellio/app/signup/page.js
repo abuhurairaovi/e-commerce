@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/utils/supabase"; // Supabase import করা হলো
 
 export default function SignupPage() {
     const router = useRouter();
@@ -32,25 +33,31 @@ export default function SignupPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData),
-                }
-            );
+            // সরাসরি Supabase Auth দিয়ে সাইন-আপ করা হচ্ছে
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.name,
+                    },
+                },
+            });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.message || "Registration failed");
+            if (signUpError) {
+                setError(signUpError.message || "Registration failed");
                 setLoading(false);
                 return;
             }
 
-            setSuccess(data.message || "Registration successful! Email check করুন।");
+            setSuccess("Registration successful! ইমেইল ভেরিফাই করুন।");
             setFormData({ name: "", email: "", password: "" });
+
+            // চাইলে সফল হওয়ার পর লগইন পেজে রিডাইরেক্ট করতে পারো
+            setTimeout(() => {
+                router.push("/login");
+            }, 2000);
+
         } catch (err) {
             console.error(err);
             setError("Server এর সাথে যোগাযোগ করা যাচ্ছে না");
