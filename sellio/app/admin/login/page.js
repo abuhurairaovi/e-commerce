@@ -3,23 +3,35 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/utils/supabase"; // নিশ্চিত করো utils/supabase সঠিক পাথ অনুযায়ী আছে
+import { supabase } from "@/utils/supabase"; // অথবা প্রয়োজন অনুযায়ী সঠিক পাথ দিন
 
 export default function LoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+    });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+
+        if (!formData.email || !formData.password) {
+            setError("Email এবং Password দিতে হবে");
+            return;
+        }
+
         setLoading(true);
 
         const { error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
+            email: formData.email,
+            password: formData.password,
         });
 
         setLoading(false);
@@ -29,48 +41,60 @@ export default function LoginPage() {
             return;
         }
 
-        // সফলভাবে লগইন হলে এডমিন ড্যাশবোর্ড বা হোম পেজে রিডাইরেক্ট করবে
+        // সফলভাবে লগইন হলে হোম পেজে রিডাইরেক্ট করবে
         router.push("/");
     };
 
     return (
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", backgroundColor: "#f9fafb" }}>
-            <div style={{ width: "100%", maxWidth: "400px", padding: "32px", background: "#fff", borderRadius: "8px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-                <h2 style={{ textAlign: "center", marginBottom: "24px", fontSize: "24px", fontWeight: "bold" }}>আপনার একাউন্টে প্রবেশ করুন</h2>
-                
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="w-full max-w-md bg-white shadow-md rounded-xl p-8">
+                <h1 className="text-2xl font-semibold text-center mb-2">Login</h1>
+                <p className="text-sm text-gray-500 text-center mb-6">
+                    আপনার account এ প্রবেশ করুন
+                </p>
+
                 {error && (
-                    <div style={{ backgroundColor: "#fee2e2", color: "#b91c1c", padding: "12px", borderRadius: "6px", marginBottom: "16px", fontSize: "14px", textAlign: "center" }}>
+                    <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-md mb-4 text-center">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", fontWeight: "500" }}>Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email
+                        </label>
                         <input
                             type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="your.email@gmail.com"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="you@example.com"
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
                             required
-                            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", outline: "none" }}
                         />
                     </div>
 
                     <div>
-                        <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", fontWeight: "500" }}>Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                        </label>
                         <input
                             type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="********"
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
                             required
-                            style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", outline: "none" }}
                         />
                     </div>
 
-                    <div style={{ textAlign: "right" }}>
-                        <Link href="/forgot-password" style={{ fontSize: "13px", color: "#2563eb", textDecoration: "none" }}>
+                    <div className="flex justify-end">
+                        <Link
+                            href="/forgot-password"
+                            className="text-sm text-gray-500 hover:text-black"
+                        >
                             Forgot password?
                         </Link>
                     </div>
@@ -78,14 +102,17 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{ width: "100%", padding: "12px", backgroundColor: "#000", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+                        className="w-full bg-black text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition disabled:opacity-60"
                     >
                         {loading ? "Logging in..." : "Login"}
                     </button>
                 </form>
 
-                <p style={{ textAlign: "center", marginTop: "20px", fontSize: "14px", color: "#6b7280" }}>
-                    Account নেই? <Link href="/signup" style={{ color: "#2563eb", fontWeight: "500" }}>Sign up</Link>
+                <p className="text-sm text-center text-gray-500 mt-6">
+                    Account নেই?{" "}
+                    <Link href="/signup" className="text-black font-medium hover:underline">
+                        Sign up
+                    </Link>
                 </p>
             </div>
         </div>

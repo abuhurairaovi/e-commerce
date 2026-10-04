@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
+import { supabase } from "@/utils/supabase";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login } = useAuth();
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -31,28 +30,21 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData),
-                }
-            );
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email: formData.email,
+                password: formData.password,
+            });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.message || "Login failed");
+            if (authError) {
+                setError(authError.message);
                 setLoading(false);
                 return;
             }
 
-            login(data.user, data.token);
             router.push("/");
         } catch (err) {
             console.error(err);
-            setError("Server এর সাথে যোগাযোগ করা যাচ্ছে না");
+            setError("লগইন করার সময় সমস্যা হয়েছে");
         } finally {
             setLoading(false);
         }
@@ -67,7 +59,7 @@ export default function LoginPage() {
                 </p>
 
                 {error && (
-                    <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-md mb-4">
+                    <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-md mb-4 text-center">
                         {error}
                     </div>
                 )}
@@ -84,6 +76,7 @@ export default function LoginPage() {
                             onChange={handleChange}
                             placeholder="you@example.com"
                             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                            required
                         />
                     </div>
 
@@ -98,6 +91,7 @@ export default function LoginPage() {
                             onChange={handleChange}
                             placeholder="********"
                             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                            required
                         />
                     </div>
 
