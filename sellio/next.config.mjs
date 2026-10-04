@@ -12,7 +12,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "images.unsplash.com", // এটি এখানে যোগ করে দিন
+        hostname: "images.unsplash.com",
       },
     ]
   }

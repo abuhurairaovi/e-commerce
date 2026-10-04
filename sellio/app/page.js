@@ -1,9 +1,15 @@
-
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// Supabase ক্লায়েন্ট ইনিশিয়ালাইজ করা
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const CATEGORIES = [
   { name: "MEN", href: "/category/men" },
@@ -14,16 +20,19 @@ const CATEGORIES = [
 
 export default function Home() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true); // ১. নতুন লোডিং স্টেট যোগ করা হলো
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/products")
-      .then((res) => res.json())
-      .then((data) => {
-        setProducts(data);
-      })
-      .catch((error) => {
+    async function getProducts() {
+      const { data, error } = await supabase.from("products").select("*");
+      if (error) {
         console.error("Error fetching products:", error);
-      });
+      } else {
+        setProducts(data || []);
+      }
+      setLoading(false); // ২. ডেটা ফেচ শেষ হলে লোডিং বন্ধ হবে
+    }
+    getProducts();
   }, []);
 
   return (
@@ -68,30 +77,36 @@ export default function Home() {
 
         <div className="overflow-hidden">
           <div className="animate-scroll flex w-max gap-6 px-5 sm:px-6">
-            {[...products, ...products].map((product, index) => (
-              <Link
-                key={`${product.id}-${index}`}
-                href={`/products/${product.id}`}
-                className="group w-56 flex-shrink-0 rounded-2xl border border-gray-200 bg-white p-4 transition duration-300 hover:border-green-600 hover:shadow-sm"
-              >
-                <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+            {loading ? (
+              <p className="px-5 text-sm text-gray-500">Loading products...</p>
+            ) : products.length > 0 ? (
+              [...products, ...products].map((product, index) => (
+                <Link
+                  key={`${product.id}-${index}`}
+                  href={`/products/${product.id}`}
+                  className="group w-56 flex-shrink-0 rounded-2xl border border-gray-200 bg-white p-4 transition duration-300 hover:border-green-600 hover:shadow-sm"
+                >
+                  <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
 
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-green-600">
-                  {product.name}
-                </p>
+                  <p className="text-sm font-semibold text-gray-900 group-hover:text-green-600">
+                    {product.name}
+                  </p>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  ৳{product.price}
-                </p>
-              </Link>
-            ))}
+                  <p className="mt-1 text-xs text-gray-500">
+                    ৳{product.price}
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <p className="px-5 text-sm text-gray-500">No products found.</p>
+            )}
           </div>
         </div>
       </section>
@@ -120,4 +135,3 @@ export default function Home() {
     </main>
   );
 }
-

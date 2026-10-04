@@ -5,6 +5,12 @@ import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function ProductDetail({ params }) {
     const { id } = use(params);
@@ -19,15 +25,16 @@ export default function ProductDetail({ params }) {
     useEffect(() => {
         async function fetchProduct() {
             try {
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`,
-                    { cache: "no-store" }
-                );
+                const { data, error } = await supabase
+                    .from("products")
+                    .select("*")
+                    .eq("id", id)
+                    .single();
 
-                if (!res.ok) {
+                if (error) {
+                    console.error("Error fetching product:", error);
                     setProduct(null);
                 } else {
-                    const data = await res.json();
                     setProduct(data);
                 }
             } catch (err) {
@@ -38,7 +45,9 @@ export default function ProductDetail({ params }) {
             }
         }
 
-        fetchProduct();
+        if (id) {
+            fetchProduct();
+        }
     }, [id]);
 
     if (loading) {
