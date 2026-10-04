@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
-import { supabase } from "@/utils/supabase"; // Supabase ইমপোর্ট করা হলো
+import { supabase } from "../../../utils/supabase"; // অথবা সঠিক ফোল্ডার লেভেল অনুযায়ী পাথ দিন
 
 export default function LoginPage() {
     const router = useRouter();
