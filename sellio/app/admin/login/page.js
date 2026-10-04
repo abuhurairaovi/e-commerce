@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/utils/supabase"; // অথবা প্রয়োজন অনুযায়ী সঠিক পাথ দিন
+import { supabase } from "../../../utils/supabase";
 
 export default function LoginPage() {
     const router = useRouter();
