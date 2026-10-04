@@ -7,7 +7,7 @@ import { useState } from "react";
 
 export default function CheckoutPage() {
     const { cart, totalPrice, clearCart } = useCart();
-    const { user, token } = useAuth();
+    const { token, loading: authLoading } = useAuth();
     const router = useRouter();
 
     const [form, setForm] = useState({
@@ -28,51 +28,47 @@ export default function CheckoutPage() {
         e.preventDefault();
         setError("");
 
-        if (!user || !token) {
+        if (!token) {
             router.push("/login");
             return;
         }
 
         if (!form.name || !form.phone || !form.address) {
-            alert("সব তথ্য পূরণ করুন");
+            setError("সব তথ্য পূরণ করুন");
             return;
         }
 
         setSubmitting(true);
 
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/orders`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    // customerId ও totalPrice পাঠানো হচ্ছে না:
-                    // ব্যাকএন্ড token ও cart_items থেকে নিজেই বের করে নেয়
-                    body: JSON.stringify({
-                        paymentMethod:
-                            paymentMethod === "cod"
-                                ? "Cash on Delivery"
-                                : "bKash",
-                        shippingAddress: `${form.name}, ${form.phone}, ${form.address}`,
-                    }),
-                }
-            );
+            const res = await fetch("/api/orders", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    paymentMethod:
+                        paymentMethod === "cod" ? "Cash on Delivery" : "bKash",
+                    shippingAddress: `${form.name}, ${form.phone}, ${form.address}`,
+                    phone: form.phone,
+                    cartItems: cart.map((item) => ({
+                        productId: item.productId || item.product_id || item.id,
+                        quantity: item.quantity,
+                    })),
+                }),
+            });
 
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.message || "Order place করা যায়নি");
-                setSubmitting(false);
+                setError(data.error || data.message || "Order place করা যায়নি");
                 return;
             }
 
-            alert("আপনার অর্ডার সফলভাবে সম্পন্ন হয়েছে!");
-
             await clearCart();
-            router.push("/");
+            alert("আপনার অর্ডার সফলভাবে সম্পন্ন হয়েছে!");
+            router.push("/my-orders");
         } catch (err) {
             console.error(err);
             setError("Server এর সাথে যোগাযোগ করা যাচ্ছে না");
@@ -80,6 +76,10 @@ export default function CheckoutPage() {
             setSubmitting(false);
         }
     };
+
+    if (authLoading) {
+        return <p className="p-6 text-center">Loading...</p>;
+    }
 
     if (cart.length === 0) {
         return (
@@ -105,18 +105,16 @@ export default function CheckoutPage() {
             <div className="border rounded-lg p-4 mb-6">
                 <h2 className="font-semibold mb-3">আপনার অর্ডার</h2>
 
-                {cart.map((item) => (
+                {cart.map((item, index) => (
                     <div
-                        key={item.id}
+                        key={item.cartItemId || index}
                         className="flex justify-between text-sm mb-2"
                     >
                         <span>
                             {item.name} × {item.quantity}
                         </span>
 
-                        <span>
-                            ৳{Number(item.price) * item.quantity}
-                        </span>
+                        <span>৳{Number(item.price) * item.quantity}</span>
                     </div>
                 ))}
 
@@ -175,9 +173,7 @@ export default function CheckoutPage() {
 
                 {/* Payment Method */}
                 <div className="border rounded-lg p-4">
-                    <h2 className="font-semibold mb-3">
-                        Payment Method
-                    </h2>
+                    <h2 className="font-semibold mb-3">Payment Method</h2>
 
                     <label className="flex items-center gap-3 mb-3 cursor-pointer">
                         <input
@@ -185,9 +181,7 @@ export default function CheckoutPage() {
                             name="paymentMethod"
                             value="cod"
                             checked={paymentMethod === "cod"}
-                            onChange={(e) =>
-                                setPaymentMethod(e.target.value)
-                            }
+                            onChange={(e) => setPaymentMethod(e.target.value)}
                         />
                         <span>Cash on Delivery</span>
                     </label>
@@ -198,9 +192,7 @@ export default function CheckoutPage() {
                             name="paymentMethod"
                             value="bkash"
                             checked={paymentMethod === "bkash"}
-                            onChange={(e) =>
-                                setPaymentMethod(e.target.value)
-                            }
+                            onChange={(e) => setPaymentMethod(e.target.value)}
                         />
                         <span>bKash</span>
                     </label>

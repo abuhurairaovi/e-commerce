@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase";
 
 const AuthContext = createContext();
 
@@ -10,23 +11,28 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const savedUser = localStorage.getItem("authUser");
-        const savedToken = localStorage.getItem("authToken");
-        if (savedUser) setUser(JSON.parse(savedUser));
-        if (savedToken) setToken(savedToken);
-        setLoading(false);
+        // পেজ খুললে বর্তমান সেশন নেওয়া
+        supabase.auth.getSession().then(({ data }) => {
+            setUser(data.session?.user ?? null);
+            setToken(data.session?.access_token ?? null);
+            setLoading(false);
+        });
+
+        // লগইন, লগআউট, টোকেন রিফ্রেশ হলে নিজে থেকে আপডেট হবে
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setToken(session?.access_token ?? null);
+            setLoading(false);
+        });
+
+        return () => listener.subscription.unsubscribe();
     }, []);
 
-    const login = (userData, authToken) => {
-        localStorage.setItem("authUser", JSON.stringify(userData));
-        localStorage.setItem("authToken", authToken);
-        setUser(userData);
-        setToken(authToken);
-    };
+    // আগের কোডের সাথে মিল রাখার জন্য, Supabase নিজেই সেশন সামলায়
+    const login = () => { };
 
-    const logout = () => {
-        localStorage.removeItem("authUser");
-        localStorage.removeItem("authToken");
+    const logout = async () => {
+        await supabase.auth.signOut();
         setUser(null);
         setToken(null);
     };

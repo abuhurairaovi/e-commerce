@@ -2,65 +2,125 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/app/context/AuthContext";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  const authHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  const userId = user?.id || user?.customerId;
 
   const fetchCart = useCallback(async () => {
-    if (!user || !token || !user.customerId) {
+    if (!userId) {
       setCart([]);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/cart/${user.customerId}`, {
-        headers: authHeaders,
+      // ১. প্রথমে কার্ট টেবิล থেকে ইউজারের আইটেমগুলো আনি
+      const { data: cartItems, error: cartError } = await supabase
+        .from("cart")
+        .select("id, quantity, product_id")
+        .eq("user_id", userId);
+
+      if (cartError) {
+        console.error("Failed to fetch cart:", cartError);
+        setCart([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!cartItems || cartItems.length === 0) {
+        setCart([]);
+        setLoading(false);
+        return;
+      }
+
+      // ২. প্রোডাক্ট আইডিগুলোর একটি লিস্ট তৈরি করি
+      const productIds = cartItems.map((item) => item.product_id);
+
+      // ৩. প্রোডাক্টস টেবিল থেকে সেই প্রোডাক্টগুলোর তথ্য আলাদাভাবে আনি
+      const { data: productsData, error: productError } = await supabase
+        .from("products")
+        .select("id, name, price, image, stock")
+        .in("id", productIds);
+
+      if (productError) {
+        console.error("Failed to fetch products for cart:", productError);
+      }
+
+      // ৪. কার্ট আইটেম এবং প্রোডাক্ট ইনফরমেশন একসাথে কম্বাইন করি
+      const formattedCart = cartItems.map((item) => {
+        const product = productsData?.find((p) => p.id === item.product_id);
+        return {
+          cartItemId: item.id,
+          productId: item.product_id,
+          name: product?.name || "Product",
+          price: product?.price || 0,
+          image: product?.image || "",
+          stock: product?.stock || 0,
+          quantity: item.quantity,
+        };
       });
-      const data = await res.json();
-      setCart(Array.isArray(data) ? data : []);
+
+      setCart(formattedCart);
     } catch (err) {
       console.error("Failed to fetch cart:", err);
     } finally {
       setLoading(false);
     }
-  }, [user, token]);
+  }, [userId]);
 
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
 
   const addToCart = async (product, quantity) => {
-    if (!user || !token || !user.customerId) {
+    if (!userId) {
       return { error: "login_required" };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/cart`, {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          customerId: user.customerId,
-          productId: product.id,
-          quantity,
-        }),
-      });
+      const { data: existingItems, error: checkError } = await supabase
+        .from("cart")
+        .select("id, quantity")
+        .eq("user_id", userId)
+        .eq("product_id", product.id);
 
-      const data = await res.json();
+      if (checkError) {
+        console.error("Check error:", checkError);
+        return { error: checkError.message };
+      }
 
-      if (!res.ok) {
-        return { error: data.message || "Failed to add to cart" };
+      if (existingItems && existingItems.length > 0) {
+        const existingItem = existingItems[0];
+        const newQty = existingItem.quantity + quantity;
+
+        const { error: updateError } = await supabase
+          .from("cart")
+          .update({ quantity: newQty })
+          .eq("id", existingItem.id);
+
+        if (updateError) return { error: updateError.message };
+      } else {
+        const { error: insertError } = await supabase.from("cart").insert([
+          {
+            user_id: userId,
+            product_id: product.id,
+            quantity: quantity,
+          },
+        ]);
+
+        if (insertError) return { error: insertError.message };
       }
 
       await fetchCart();
@@ -75,15 +135,13 @@ export function CartProvider({ children }) {
     if (quantity < 1) return;
 
     try {
-      const res = await fetch(`${apiUrl}/api/cart/${cartItemId}`, {
-        method: "PUT",
-        headers: authHeaders,
-        body: JSON.stringify({ quantity }),
-      });
+      const { error } = await supabase
+        .from("cart")
+        .update({ quantity })
+        .eq("id", cartItemId);
 
-      if (!res.ok) {
-        const data = await res.json();
-        console.error(data.message);
+      if (error) {
+        console.error(error.message);
         return;
       }
 
@@ -95,14 +153,13 @@ export function CartProvider({ children }) {
 
   const removeFromCart = async (cartItemId) => {
     try {
-      const res = await fetch(`${apiUrl}/api/cart/${cartItemId}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
+      const { error } = await supabase
+        .from("cart")
+        .delete()
+        .eq("id", cartItemId);
 
-      if (!res.ok) {
-        const data = await res.json();
-        console.error(data.message);
+      if (error) {
+        console.error(error.message);
         return;
       }
 
@@ -113,13 +170,19 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = async () => {
-    if (!user || !token || !user.customerId) return;
+    if (!userId) return;
 
     try {
-      await fetch(`${apiUrl}/api/cart/customer/${user.customerId}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
+      const { error } = await supabase
+        .from("cart")
+        .delete()
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error(error.message);
+        return;
+      }
+
       setCart([]);
     } catch (err) {
       console.error("Failed to clear cart:", err);

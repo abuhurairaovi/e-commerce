@@ -1,0 +1,35 @@
+import { supabaseAdmin } from "@/utils/supabaseAdmin";
+
+export async function verifyUser(request) {
+    const auth = request.headers.get("authorization");
+    if (!auth?.startsWith("Bearer ")) {
+        return { error: "Unauthorized", status: 401 };
+    }
+
+    const token = auth.split(" ")[1];
+
+    // Supabase Auth দিয়ে টোকেন যাচাই
+    const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !data?.user?.email) {
+        return { error: "Invalid token", status: 401 };
+    }
+
+    // ইমেইল দিয়ে নিজের users টেবিল থেকে id ও role আনা
+    const { data: user, error } = await supabaseAdmin
+        .from("users")
+        .select("id, role, email")
+        .eq("email", data.user.email)
+        .single();
+
+    if (error || !user) return { error: "User not found", status: 401 };
+    return { user };
+}
+
+export async function verifyAdmin(request) {
+    const result = await verifyUser(request);
+    if (result.error) return result;
+    if (result.user.role !== "admin") {
+        return { error: "Forbidden", status: 403 };
+    }
+    return result;
+}

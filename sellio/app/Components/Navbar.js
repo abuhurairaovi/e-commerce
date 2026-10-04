@@ -50,7 +50,7 @@ export default function Navbar() {
 
           {user && (
             <Link
-              href='/order'
+              href='/my-orders'
               className='text-white hover:text-green-600'
             >
               my orders
@@ -83,10 +83,8 @@ export default function Navbar() {
         {user ? (
           <div className='hidden items-center gap-3 md:flex'>
             <span className='text-white text-sm'>
-              👤 {user.email.split('@')[0]}
+              👤 {user.user_metadata?.full_name || user.email.split('@')[0]}
             </span>
-
-            {/* সবুজ রঙের MY ORDERS বাটনটি এখান থেকে মুছে ফেলা হয়েছে */}
 
             <button
               onClick={logout}
@@ -122,7 +120,7 @@ export default function Navbar() {
 
           {user && (
             <Link
-              href="/order"
+              href="/my-orders"
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2.5 text-sm text-gray-300 transition duration-300 hover:bg-gray-800 hover:text-green-400"
             >
@@ -142,7 +140,7 @@ export default function Navbar() {
           {user ? (
             <div className="mt-3 flex flex-col gap-2">
               <span className="text-gray-300 text-sm px-3">
-                👤 {user.email.split('@')[0]}
+                👤 {user.user_metadata?.full_name || user.email.split('@')[0]}
               </span>
 
               <button
