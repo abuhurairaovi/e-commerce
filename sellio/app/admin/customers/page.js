@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { supabase } from "@/utils/supabase";
 
 export default function CustomersPage() {
     const [search, setSearch] = useState("");
@@ -13,19 +12,23 @@ export default function CustomersPage() {
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                const res = await fetch(`${API_URL}/api/customers`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) throw new Error(`Customers লোড করা যায়নি (${res.status})`);
-                const data = await res.json();
-                setCustomers(data);
+                // সরাসরি Supabase থেকে কাস্টমার বা ইউজারদের ডাটা ফেচ করা হচ্ছে
+                const { data, error: supabaseError } = await supabase
+                    .from("customers") // আপনার Supabase টেবিলের নাম যদি আলাদা হয় (যেমন 'users' বা 'profiles'), তবে এখানে তা বসিয়ে দিতে পারেন
+                    .select("*");
+
+                if (supabaseError) {
+                    throw new Error(supabaseError.message);
+                }
+
+                setCustomers(data || []);
             } catch (err) {
-                setError(err.message);
+                setError(err.message || "Customers লোড করা যায়নি");
             } finally {
                 setLoading(false);
             }
         };
+
         fetchCustomers();
     }, []);
 
@@ -94,9 +97,9 @@ export default function CustomersPage() {
                                         <td className="px-5 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-[#22c55e]/15 flex items-center justify-center text-[#16a34a] text-xs font-semibold">
-                                                    {(customer.name || "?").charAt(0)}
+                                                    {(customer.name || customer.email || "?").charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="text-black font-medium">{customer.name}</span>
+                                                <span className="text-black font-medium">{customer.name || "N/A"}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-3 text-black/60">{customer.email}</td>
