@@ -3,14 +3,18 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 
+const STATUSES = ["Pending", "Shipped", "Delivered", "Cancelled"];
+const statusOption = ["All", ...STATUSES];
+
 const statusColor = {
-    Pending: "bg-yellow-500/15 text-yellow-600",
-    Shipped: "bg-blue-500/15 text-blue-600",
-    Delivered: "bg-[#22c55e]/15 text-[#16a34a]",
-    Cancelled: "bg-red-500/15 text-red-500",
+    pending: "bg-yellow-500/15 text-yellow-600",
+    shipped: "bg-blue-500/15 text-blue-600",
+    delivered: "bg-[#22c55e]/15 text-[#16a34a]",
+    cancelled: "bg-red-500/15 text-red-500",
 };
 
-const statusOption = ["All", "Pending", "Shipped", "Delivered", "Cancelled"];
+const norm = (s) => String(s || "").toLowerCase();
+const toOption = (s) => STATUSES.find((x) => norm(x) === norm(s)) || "Pending";
 
 export default function OrderPages() {
     const { token, loading: authLoading } = useAuth();
@@ -38,9 +42,9 @@ export default function OrderPages() {
                     throw new Error("আপনার এই পেজ দেখার অনুমতি নেই।");
                 }
 
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    throw new Error(data.error || "Failed to load orders.");
+                    throw new Error(data.error || data.message || "Failed to load orders.");
                 }
 
                 setOrders(data.orders || []);
@@ -56,12 +60,10 @@ export default function OrderPages() {
     }, [token, authLoading]);
 
     const filtered =
-        filter === "All" ? orders : orders.filter((o) => o.status === filter);
+        filter === "All" ? orders : orders.filter((o) => norm(o.status) === norm(filter));
 
     async function updateStatus(id, status) {
         const previous = orders;
-
-        // আগে UI তে সাথে সাথে বদলে দিচ্ছি (optimistic update)
         setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
 
         try {
@@ -74,11 +76,14 @@ export default function OrderPages() {
                 body: JSON.stringify({ status }),
             });
 
-            if (!res.ok) throw new Error("Status update failed");
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || data.message || "Status update failed");
+            }
         } catch (err) {
             console.error(err);
-            setOrders(previous); // ব্যর্থ হলে আগের অবস্থায় ফিরে যাবে
-            alert("Status update ব্যর্থ হয়েছে, আবার চেষ্টা করুন।");
+            setOrders(previous);
+            alert(`Status update ব্যর্থ: ${err.message}`);
         }
     }
 
@@ -101,10 +106,11 @@ export default function OrderPages() {
                     <button
                         key={status}
                         onClick={() => setFilter(status)}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === status
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                            filter === status
                                 ? "bg-[#22c55e] text-black"
                                 : "bg-white border border-black/20 text-black hover:text-green-600"
-                            }`}
+                        }`}
                     >
                         {status === "All" ? "সবগুলো" : status}
                     </button>
@@ -131,30 +137,32 @@ export default function OrderPages() {
                                     className="border-b border-black/5 last:border-0 hover:bg-black/[0.02]"
                                 >
                                     <td className="px-5 py-3 text-black font-medium">
-                                        #{order.id}
+                                        #{String(order.id).slice(0, 8)}
                                     </td>
                                     <td className="px-5 py-3 text-black">
-                                        {order.customer || "N/A"}
+                                        {order.customer || order.phone || "N/A"}
                                     </td>
                                     <td className="px-5 py-3 text-black">
-                                        {new Date(order.created_at).toLocaleDateString()}
+                                        {order.created_at
+                                            ? new Date(order.created_at).toLocaleDateString()
+                                            : "-"}
                                     </td>
                                     <td className="px-5 py-3 text-black">
-                                        ৳{Number(order.total_price).toLocaleString("en-BD")}
+                                        ৳{Number(order.total_price || 0).toLocaleString("en-BD")}
                                     </td>
                                     <td className="px-5 py-3">
                                         <select
-                                            value={order.status}
-                                            onChange={(e) =>
-                                                updateStatus(order.id, e.target.value)
-                                            }
-                                            className={`text-xs px-2.5 py-1.5 rounded-full border-0 focus:outline-none focus:ring-1 focus:ring-[#22c55e] cursor-pointer ${statusColor[order.status] || ""
-                                                }`}
+                                            value={toOption(order.status)}
+                                            onChange={(e) => updateStatus(order.id, e.target.value)}
+                                            className={`text-xs px-2.5 py-1.5 rounded-full border-0 focus:outline-none focus:ring-1 focus:ring-[#22c55e] cursor-pointer ${
+                                                statusColor[norm(order.status)] || ""
+                                            }`}
                                         >
-                                            <option value="Pending">Pending</option>
-                                            <option value="Shipped">Shipped</option>
-                                            <option value="Delivered">Delivered</option>
-                                            <option value="Cancelled">Cancelled</option>
+                                            {STATUSES.map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
                                         </select>
                                     </td>
                                 </tr>
@@ -162,10 +170,7 @@ export default function OrderPages() {
 
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td
-                                        colSpan={5}
-                                        className="px-5 py-10 text-center text-black/50"
-                                    >
+                                    <td colSpan={5} className="px-5 py-10 text-center text-black/50">
                                         এই স্ট্যাটাসে কোনো অর্ডার নেই
                                     </td>
                                 </tr>

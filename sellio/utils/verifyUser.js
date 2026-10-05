@@ -8,21 +8,29 @@ export async function verifyUser(request) {
 
     const token = auth.split(" ")[1];
 
-    // Supabase Auth দিয়ে টোকেন যাচাই
     const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !data?.user?.email) {
         return { error: "Invalid token", status: 401 };
     }
 
-    // ইমেইল দিয়ে নিজের users টেবিল থেকে id ও role আনা
-    const { data: user, error } = await supabaseAdmin
+    // case-insensitive ইমেইল মিল (_ % \ এস্কেপ করা)
+    const email = data.user.email.toLowerCase().replace(/[\\%_]/g, "\\$&");
+
+    const { data: rows, error } = await supabaseAdmin
         .from("users")
         .select("id, role, email")
-        .eq("email", data.user.email)
-        .single();
+        .ilike("email", email)
+        .limit(1);
 
-    if (error || !user) return { error: "User not found", status: 401 };
-    return { user };
+    if (error) {
+        console.error("verifyUser error:", error.message);
+        return { error: "User lookup failed", status: 500 };
+    }
+    if (!rows || rows.length === 0) {
+        return { error: "User not found", status: 401 };
+    }
+
+    return { user: rows[0] };
 }
 
 export async function verifyAdmin(request) {

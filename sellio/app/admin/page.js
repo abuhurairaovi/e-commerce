@@ -47,15 +47,19 @@ export default function AdminDashboard() {
         fetchAll();
     }, [token, authLoading]);
 
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+    // Cancelled order revenue-তে গোনা হবে না
+    const totalRevenue = orders
+        .filter((o) => String(o.status || "").toLowerCase() !== "cancelled")
+        .reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+
     const lowStockCount = products.filter((p) => p.stock > 0 && p.stock <= 3).length;
     const outOfStockCount = products.filter((p) => p.stock === 0).length;
 
     const statusColor = {
-        Pending: "bg-yellow-500/15 text-yellow-600",
-        Shipped: "bg-blue-500/15 text-blue-600",
-        Delivered: "bg-[#22c55e]/15 text-[#16a34a]",
-        Cancelled: "bg-red-500/15 text-red-500",
+        pending: "bg-yellow-500/15 text-yellow-600",
+        shipped: "bg-blue-500/15 text-blue-600",
+        delivered: "bg-[#22c55e]/15 text-[#16a34a]",
+        cancelled: "bg-red-500/15 text-red-500",
     };
 
     const recentOrders = [...orders]
@@ -111,18 +115,26 @@ export default function AdminDashboard() {
                         <tbody>
                             {recentOrders.map((order) => (
                                 <tr key={order.id} className="border-b border-black/5 last:border-0">
-                                    <td className="px-5 py-3 font-medium text-black">#{order.id}</td>
+                                    <td className="px-5 py-3 font-medium text-black">
+                                        #{String(order.id).slice(0, 8)}
+                                    </td>
                                     <td className="px-5 py-3 text-black/70">
                                         {order.customer || order.customer_name || `User #${order.user_id}`}
                                     </td>
                                     <td className="px-5 py-3 text-black/70">
-                                        {new Date(order.created_at).toLocaleDateString()}
+                                        {order.created_at
+                                            ? new Date(order.created_at).toLocaleDateString()
+                                            : "-"}
                                     </td>
                                     <td className="px-5 py-3 text-black/70">
-                                        ৳{Number(order.total_price).toLocaleString("en-BD")}
+                                        ৳{Number(order.total_price || 0).toLocaleString("en-BD")}
                                     </td>
                                     <td className="px-5 py-3">
-                                        <span className={`text-xs px-2.5 py-1 rounded-full ${statusColor[order.status] || ""}`}>
+                                        <span
+                                            className={`text-xs px-2.5 py-1 rounded-full ${statusColor[String(order.status || "").toLowerCase()] ||
+                                                "bg-black/5 text-black/60"
+                                                }`}
+                                        >
                                             {order.status}
                                         </span>
                                     </td>

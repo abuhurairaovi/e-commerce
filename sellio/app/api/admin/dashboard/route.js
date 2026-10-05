@@ -11,13 +11,14 @@ export async function GET(request) {
     }
 
     const [orders, products, customers] = await Promise.all([
-        supabaseAdmin.from("orders").select("*").order("id", { ascending: false }),
+        supabaseAdmin.from("orders").select("*").order("created_at", { ascending: false }),
         supabaseAdmin.from("products").select("id, name, price, stock"),
         supabaseAdmin.from("customers").select("*"),
     ]);
 
     const error = orders.error || products.error || customers.error;
     if (error) {
+        console.error("dashboard error:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
