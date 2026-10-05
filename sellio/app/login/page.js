@@ -41,8 +41,9 @@ export default function LoginPage() {
                 return;
             }
 
-            // সফলভাবে লগইন হওয়ার পর সরাসরি অ্যাডমিন প্যানেলে রিডাইরেক্ট করবে
+            // সফলভাবে লগইন হওয়ার পর সরাসরি অ্যাডমিন প্যানেলে নিয়ে যাবে
             router.push("/admin");
+            router.refresh();
         } catch (err) {
             console.error(err);
             setError("লগইন করার সময় সমস্যা হয়েছে");
