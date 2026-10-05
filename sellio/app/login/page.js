@@ -41,10 +41,11 @@ export default function LoginPage() {
                 return;
             }
 
-            router.push("/");
+            // সফলভাবে লগইন হওয়ার পর সরাসরি অ্যাডমিন প্যানেলে রিডাইরেক্ট করবে
+            router.push("/admin");
         } catch (err) {
             console.error(err);
-            setError("লগইন করার সময় সমস্যা হয়েছে");
+            setError("লগইন করার সময় সমস্যা হয়েছে");
         } finally {
             setLoading(false);
         }
