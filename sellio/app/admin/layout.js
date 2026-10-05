@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { supabase } from "@/utils/supabase";
 
 export default function AdminLayout({ children }) {
     const pathname = usePathname();
@@ -14,37 +13,30 @@ export default function AdminLayout({ children }) {
     const [allowed, setAllowed] = useState(false);
 
     useEffect(() => {
-        if (isLoginPage) return;
+        if (isLoginPage) {
+            setAllowed(true);
+            return;
+        }
 
-        const checkAdmin = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                router.replace("/admin/login");
+        const checkAdminSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                // সেশন না থাকলে লগইন পেজে পাঠাবে
+                router.replace("/login");
                 return;
             }
-            try {
-                // ব্যাকএন্ড যাচাই করবে token টা admin এর কিনা
-                const res = await fetch(`${API_URL}/api/customers`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    setAllowed(true);
-                } else {
-                    router.replace("/admin/login");
-                }
-            } catch {
-                router.replace("/admin/login");
-            }
+
+            setAllowed(true);
         };
 
-        checkAdmin();
-    }, [isLoginPage, pathname, router]);
+        checkAdminSession();
+    }, [isLoginPage, router]);
 
     if (isLoginPage) {
         return <div className="bg-white min-h-screen">{children}</div>;
     }
 
-    // যাচাই শেষ না হওয়া পর্যন্ত কিছুই দেখাবে না
     if (!allowed) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center text-black/40">

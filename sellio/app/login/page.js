@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 
 export default function LoginPage() {
-    const router = useRouter();
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -23,7 +21,7 @@ export default function LoginPage() {
         setError("");
 
         if (!formData.email || !formData.password) {
-            setError("Email এবং Password দিতে হবে");
+            setError("Email ebong Password dite hobe");
             return;
         }
 
@@ -42,11 +40,10 @@ export default function LoginPage() {
             }
 
             // সফলভাবে লগইন হওয়ার পর সরাসরি অ্যাডমিন প্যানেলে নিয়ে যাবে
-            router.push("/admin");
-            router.refresh();
+            window.location.href = "/admin";
         } catch (err) {
             console.error(err);
-            setError("লগইন করার সময় সমস্যা হয়েছে");
+            setError("Login korar somoy somossa hoyeche");
         } finally {
             setLoading(false);
         }
@@ -57,7 +54,7 @@ export default function LoginPage() {
             <div className="w-full max-w-md bg-white shadow-md rounded-xl p-8">
                 <h1 className="text-2xl font-semibold text-center mb-2">Login</h1>
                 <p className="text-sm text-gray-500 text-center mb-6">
-                    আপনার account এ প্রবেশ করুন
+                    Apnar account e প্রবেশ korun
                 </p>
 
                 {error && (
@@ -116,7 +113,7 @@ export default function LoginPage() {
                 </form>
 
                 <p className="text-sm text-center text-gray-500 mt-6">
-                    Account নেই?{" "}
+                    Account nei?{" "}
                     <Link href="/signup" className="text-black font-medium hover:underline">
                         Sign up
                     </Link>
